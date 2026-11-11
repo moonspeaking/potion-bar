@@ -170,6 +170,7 @@ class PBBottle {
   }
   putOnBurner(b) {
     this.burner = b;
+    this.tickAcc = 0;
     b.bottle = this;
     b.burningOn = true;
     if (this.step === 2 || this.step === 4) {
@@ -180,6 +181,7 @@ class PBBottle {
   }
   takeOffBurner() {
     if (this.burner) {
+      this.tickAcc = 0;
       this.burner.bottle = null;
       this.burner.burningOn = false;
       this.burner.setProgress(0);
@@ -206,6 +208,48 @@ class PBBottle {
     this.hitActive = true;
   }
 
+  // boil_step оригинала: тик 500 мс, step_value = 200
+  boilStep() {
+    const SV = TIMING.progressRate * 0.5;
+    if (this.step === 4) this.startPoint -= SV;     // со специями часы перегрева стоят, греется «прогрев»
+    else this.progress += SV;
+    this.burner.setProgress(this.progress / TIMING.overheatUnits);
+    if (this.step === 2 || this.step === 4) {
+      this.burnStarted = true;
+      if (this.corkRock === 0 && this.corkFlying === 0 && this.progress >= TIMING.rockUnits + this.startPoint) {
+        this.corkRock = 0.0001;
+      }
+      if (!this.boiled && this.progress >= TIMING.boilUnits + this.startPoint) {
+        this.boiled = true;
+        this.burnStarted = false;
+        this.step = (this.step === 2) ? 3 : 5;
+        this.corkFlying = 0.0001;
+        this.corkRock = 0;
+        this.scene.sfx('GamePotionReady');
+      }
+    }
+    if (this.progress >= TIMING.overheatUnits) {
+      if (this.scene.tutorialActive) this.progress -= SV;      // в обучении зелье не портится
+      else {
+        this.scene.sfx('GamePotionGoBad');
+        this.step = 6;     // бутылка остаётся на горелке, пока игрок её не снимет
+      }
+    }
+  }
+
+  // cool_step оригинала: только step > 2, пол — boil_time; при burn_started startPoint уменьшается синхронно
+  coolStep() {
+    if (!(this.step > 2 && this.step < 6)) return;
+    const SV = TIMING.coolRate * 0.5;
+    if (this.progress > TIMING.boilUnits) {
+      if (this.burnStarted) this.startPoint -= SV;
+      this.progress -= SV;
+    } else {
+      if (this.burnStarted) this.startPoint += TIMING.boilUnits - this.progress;
+      this.progress = TIMING.boilUnits;
+    }
+  }
+
   update(dt) {
     if (this.fadeT < 1) this.fadeT = Math.min(1, this.fadeT + dt / 0.2);
     // выпивание
@@ -218,51 +262,13 @@ class PBBottle {
         }
       }
     }
-    // кипячение на горелке (boil_step: тик 500мс, step_value=200 → 400 юнитов/с)
-    if (this.burner && this.step >= 2 && this.step <= 5) {
-      if (this.step === 2 || this.step === 4) {
-        this.burnStarted = true;
-        if (this.step === 4) {
-          // специи: часы перегрева (progress) заморожены, нагрев идёт через
-          // уменьшение startPoint (эффективный прогрев = progress - startPoint)
-          this.startPoint -= TIMING.progressRate * dt;
-        } else {
-          this.progress += TIMING.progressRate * dt;
-        }
-      } else {
-        // step 3/5: startPoint зафиксирован при постановке (bottleBoil)
-        this.progress += TIMING.progressRate * dt;
-      }
-      if ((this.step === 2 || this.step === 4) && this.corkRock === 0 && this.corkFlying === 0 &&
-          this.progress >= TIMING.rockUnits + this.startPoint) {
-        this.corkRock = 0.0001;
-      }
-      if ((this.step === 2 || this.step === 4) && !this.boiled &&
-          this.progress >= TIMING.boilUnits + this.startPoint) {
-        this.boiled = true;
-        this.burnStarted = false;
-        this.step = (this.step === 2) ? 3 : 5;
-        this.corkFlying = 0.0001;
-        this.corkRock = 0;
-        this.scene.sfx('GamePotionReady');
-      }
-      if (this.progress >= TIMING.overheatUnits) {
-        this.scene.sfx('GamePotionGoBad');
-        this.step = 6;
-        // в оригинале бутылка остаётся на горелке, пока игрок её не снимет
-      }
-      this.burner.setProgress(this.progress / TIMING.overheatUnits);
-    }
-    // остывание вне горелки (cool_step: только step>2, пол — boil_time;
-    // при burn_started startPoint уменьшается синхронно — прогрев сохраняется)
-    if (!this.burner && this.step > 2 && this.step < 6 && this.progress > TIMING.boilUnits) {
-      const cool = TIMING.coolRate * dt;
-      if (this.burnStarted) this.startPoint -= cool;
-      this.progress -= cool;
-      if (this.progress <= TIMING.boilUnits) {
-        if (this.burnStarted) this.startPoint += TIMING.boilUnits - this.progress;
-        this.progress = TIMING.boilUnits;
-      }
+    // кипячение и остывание — дискретными тиками по 500 мс, как setInterval в оригинале
+    // (boil_step / cool_step; таймер перезапускается при постановке/снятии с горелки)
+    this.tickAcc = (this.tickAcc || 0) + dt;
+    while (this.tickAcc >= 0.5) {
+      this.tickAcc -= 0.5;
+      if (this.burner) { if (this.step >= 2 && this.step <= 5) this.boilStep(); }
+      else this.coolStep();
     }
     // пробка
     if (this.corkRock > 0 && this.corkFlying === 0) this.corkRock += dt;
