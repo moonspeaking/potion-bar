@@ -110,11 +110,24 @@ Object.assign(BarScene.prototype, {
     if (!s) { this.tutBlink = new Set(); this.tutAllow = null; return; }
     this.tutT += dt;
 
+    // игрок взял стакан «не по сценарию» (раньше подсказки или другой) — подстраиваем обучение под него
+    const hd = this.dragObj;
+    if (hd && hd.type === 1 && hd.step >= 1 && hd !== this.tutBottle && this.tutStep <= 8 && !hd.client) {
+      this.tutBottle = hd;
+      if (this.tutStep < 2) { this.tutStep = 1; this.tutNext(); return; }     // сразу к шагу «наполни жидкостью»
+    }
+    // стакан вылили в раковину — возвращаемся к шагу «возьми стакан»
+    if (this.tutBottle && this.tutBottle.step === 0 && !hd && this.tutStep >= 2 && this.tutStep <= 8) {
+      this.tutBottle = null; this.tutStep = 0; this.tutNext(); return;
+    }
+
     // мигающие (и единственно доступные) предметы текущего шага
     const set = new Set(s.blink ? s.blink() : []);
     this.tutBlink = set;
     // доступны мигающие предметы и (если шаг требует) ещё «цели» — например бутылка под специю
     this.tutAllow = s.blink ? new Set([...set, ...(s.allow ? s.allow() : [])]) : new Set();
+    // испорченную/ненужную смесь в руках всегда можно вылить в раковину
+    if (hd && hd.type === 1 && hd.step > 1 && this.sink) this.tutAllow.add(this.sink);
 
     if (s.wait) {
       // реплика-пауза: идёт по времени или по клику
