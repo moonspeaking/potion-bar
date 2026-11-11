@@ -111,6 +111,7 @@ Object.assign(BarScene.prototype, {
         st.lx = over ? Input.x : null; st.ly = Input.y;
         this.rubGlow = Math.min(1, st.rub / 900);
         this.catHover = over;
+        if (over && Input.clicked) { Input.clicked = false; st.rub += 300; this.catBump = 0.4; this.sfx('GameClickStatuette'); }   // клик тоже «греет»
         if (st.rub >= 900) {
           this.sfx('GameClickStatuette');
           this.catBump = 0.4;
@@ -156,7 +157,7 @@ Object.assign(BarScene.prototype, {
       this.updateStory(dt);
       // записку можно открыть только на нужном шаге
       this.noteHover = stage === 'wait' && inRect(this.noteRect(), Input.x, Input.y);
-      Cursor.set(this.noteHover ? 'pointer' : 'default');
+      Cursor.set(this.noteHover || (stage === 'rub' && this.catHover) ? 'pointer' : 'default');
       if (this.noteHover && Input.clicked) { Input.clicked = false; this.openNote(); }
       return true;                                    // пока идёт сцена, бар не живёт
     }
@@ -194,7 +195,7 @@ Object.assign(BarScene.prototype, {
       ctx.scale(c.s, c.s);
       drawFrame(ctx, 'STATUETTE_SHADOW', 0, 0, 0);                     // тень остаётся на месте
       drawFrame(ctx, 'STATUETTE', 0, 0, bump / c.s);                   // кот подпрыгивает
-      const g = (st && st.stage === 'rub') ? this.rubGlow : (this.catHover ? 1 : 0);
+      const g = (st && st.stage === 'rub') ? Math.max(this.rubGlow, this.catHover ? 0.6 : 0.25) : (this.catHover ? 1 : 0);   // в стадии «потри» статуэтка подсвечена сразу
       if (g > 0.01) drawFrame(ctx, 'STATUETTE', 1, 0, bump / c.s, { alpha: g });
       ctx.restore();
     }
@@ -205,8 +206,8 @@ Object.assign(BarScene.prototype, {
       text(ctx, 'Откройте записку', n.x + 92, n.y + 40, { size: 20, color: '#fff3d0' });
       ctx.restore();
     }
-    if (st && st.stage === 'rub' && this.catAppear >= 1 && st.t > 3) {
-      ctx.save(); ctx.globalAlpha = clamp((st.t - 3) / 1.0, 0, 1);
+    if (st && st.stage === 'rub' && this.catAppear >= 1 && st.t > 1) {
+      ctx.save(); ctx.globalAlpha = clamp((st.t - 1) / 1.0, 0, 1);
       text(ctx, 'Потрите статуэтку мышью', c.x + 96, c.y - 10, { size: 20, color: '#fff3d0' });
       ctx.restore();
     }
