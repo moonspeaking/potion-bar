@@ -327,8 +327,8 @@ class ProfilePanel {
       text(ctx, 'Введите Ваше имя', W / 2, L.y0 + 112, { size: 24, color: tcol, stroke: null });
       const f = Assets.spr('EDIT_NAME');
       if (f) ctx.drawImage(f.img, L.fx - f.w / 2, L.fy - f.h / 2);
-      if (this.firstRun) text(ctx, 'Создайте новый профиль для начала новой игры.', W / 2, L.y0 + 184, { size: 14, color: '#5a3a20', stroke: null, bold: false });
-      if (this.err) text(ctx, this.err, W / 2, L.y0 + 184, { size: 16, color: '#b01010', stroke: null });
+      if (this.firstRun) text(ctx, 'Создайте новый профиль для начала новой игры.', W / 2, L.y0 + 138, { size: 14, color: '#5a3a20', stroke: null, bold: false });
+      if (this.err) text(ctx, this.err, W / 2, L.y0 + 138, { size: 16, color: '#b01010', stroke: null });
       uiButton(ctx, L.ok, 'Да');
       if (!this.firstRun) uiButton(ctx, L.cancel, 'Отмена');
       return;
