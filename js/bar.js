@@ -1035,6 +1035,10 @@ class BarScene {
   // В оригинале цель броска — объект, с которым ПЕРЕСЕКАЮТСЯ пиксели тащимого
   // предмета (а не курсор); при нескольких — ближайший по центру.
   dropHitTest(drag) {
+    // цель под курсором приоритетнее пересечения: у большой «сборки» (бутылки) пересечений несколько,
+    // и игрок ожидает то, на что указывает курсор
+    const under = this.hitTest(Input.x, Input.y, drag);
+    if (under) return under;
     const dr = drag.dropRect ? drag.dropRect() : drag.contentRect();
     const dcx = dr.x + dr.w / 2, dcy = dr.y + dr.h / 2;
     let best = null, bestD = Infinity;
