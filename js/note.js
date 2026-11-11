@@ -111,7 +111,7 @@ Object.assign(BarScene.prototype, {
         st.lx = over ? Input.x : null; st.ly = Input.y;
         this.rubGlow = Math.min(1, st.rub / 900);
         this.catHover = over;
-        if (over && Input.clicked) { Input.clicked = false; st.rub += 300; this.catBump = 0.4; this.sfx('GameClickStatuette'); }   // клик тоже «греет»
+        if (over && Input.clicked) { Input.clicked = false; st.rub = 900; }   // клик тоже «греет»
         if (st.rub >= 900) {
           this.sfx('GameClickStatuette');
           this.catBump = 0.4;
