@@ -126,6 +126,7 @@ class PBBottle {
     this.scene = scene;
     this.rackIndex = rackIndex;
     this.type = 1;
+    this.kind = 0;            // тип стакана: 0 обычный, 1 денежный, 2 неперекипающий, 3 самовар (см. shop.js)
     this.step = 0;
     this.ingredientID = -1;
     this.spicies = [];
@@ -192,6 +193,7 @@ class PBBottle {
     }
   }
   clearAll() {
+    const used = this.step > 1 || this.ingredientID >= 0;
     this.step = 0;
     this.ingredientID = -1;
     this.spicies = [];
@@ -209,6 +211,8 @@ class PBBottle {
     this.takeOffBurner();
     this.visible = true;
     this.hitActive = true;
+    // новый стакан в держателе — только если прежний использован (пустой, просто возвращённый на место, остаётся тем же)
+    if (used && this.scene.assignGlass) this.kind = Shop.pickGlass(this.scene.shopL(), this.rackIndex, this.scene, false);
   }
 
   // boil_step оригинала: тик 500 мс, step_value = 200
@@ -216,7 +220,7 @@ class PBBottle {
     const SV = TIMING.progressRate * 0.5;
     if (this.step === 4) this.startPoint -= SV;     // со специями часы перегрева стоят, греется «прогрев»
     else this.progress += SV;
-    this.burner.setProgress(this.progress / TIMING.overheatUnits);
+    if (this.burner) this.burner.setProgress(this.progress / TIMING.overheatUnits);
     if (this.step === 2 || this.step === 4) {
       this.burnStarted = true;
       if (this.corkRock === 0 && this.corkFlying === 0 && this.progress >= TIMING.rockUnits + this.startPoint) {
@@ -232,7 +236,7 @@ class PBBottle {
       }
     }
     if (this.progress >= TIMING.overheatUnits) {
-      if (this.scene.tutorialActive) this.progress -= SV;      // в обучении зелье не портится
+      if (this.scene.tutorialActive || this.kind === 2 || this.kind === 3) this.progress -= SV;      // в обучении, в неперекипающем стакане и в самоваре зелье не портится
       else {
         this.scene.sfx('GamePotionGoBad');
         this.step = 6;     // бутылка остаётся на горелке, пока игрок её не снимет
@@ -270,7 +274,7 @@ class PBBottle {
     this.tickAcc = (this.tickAcc || 0) + dt;
     while (this.tickAcc >= 0.5) {
       this.tickAcc -= 0.5;
-      if (this.burner) { if (this.step >= 2 && this.step <= 5) this.boilStep(); }
+      if (this.burner || (this.kind === 3 && this.step >= 2 && this.step <= 5)) { if (this.step >= 2 && this.step <= 5) this.boilStep(); }   // самовар греется сам
       else this.coolStep();
     }
     // пробка
@@ -290,15 +294,15 @@ class PBBottle {
     const x = this.x, y = this.y;
     ctx.save();
     ctx.globalAlpha *= this.alpha * this.fadeT;
-    const glass = 'GLASS0';
+    const glass = SHOP_GLASS_SPR[this.kind] || 'GLASS0';
 
     if (this.step === 0) {
       drawFrame(ctx, glass, 0, x, y);
-      if (this.hovered) drawFrame(ctx, 'GLOW_RACK0', 0, x, y);
+      if (this.hovered) drawFrame(ctx, 'GLOW_RACK' + (this.kind || 0), 0, x, y);
     } else {
       drawFrame(ctx, glass, 2, x, y);                       // задняя половина
       if (this.ingredientID >= 0) this.drawLiquid(ctx, x, y);
-      if (this.hovered) drawFrame(ctx, 'GLOW_IN0', 0, x, y);
+      if (this.hovered) drawFrame(ctx, 'GLOW_IN' + (this.kind || 0), 0, x, y);
       this.drawCork(ctx, x, y);
       if (this.spicies.length) {
         ctx.save();
@@ -828,6 +832,7 @@ class BarScene {
       ...this.clients, this.sink,
     ];
     this.hoveredObj = null;
+    this.assignGlass(false);       // типы стекла в держателях (shop.js)
 
     this.sfx('UILevelBegin');
     Music.play(LOCATION_MUSIC[this.loc - 1] || 'Episode01');
@@ -843,17 +848,18 @@ class BarScene {
       const slot = POS.ingredientBottles[pos][0];
       if (LVL_ACT_INGREDIENTS[li][slot] === 1) this.ingBottles.push(new IngBottle(this, pos, slot));
     }
+    // горелки, специи, украшения и амулеты — по купленному в магазине (shop.js), а не по уровню как во Flash
     for (let i = 0; i < 4; i++) {
       const b = new Burner(this, i, this.loc);
-      b.closed = LVL_ACT_BURNERS[li][i] === 0;
+      b.closed = !Shop.burnerOpen(i);
       this.burners.push(b);
     }
-    for (let i = 0; i < 5; i++) this.spices.push(new SpiceItem(this, i, LVL_ACT_SPICES[li][i]));
+    for (let i = 0; i < 5; i++) this.spices.push(new SpiceItem(this, i, Shop.spiceId(i)));
     for (let i = 0; i < 4; i++) {
-      if (LVL_ACT_DECORS[li][i] === 1) this.decors.push(new DecorItem(this, i, i + 1));
+      if (Shop.has(3, i)) this.decors.push(new DecorItem(this, i, i + 1));
     }
     for (let i = 0; i < 4; i++) {
-      if (LVL_ACT_AMULETS[li][i] === 1) this.amulets.push(new AmuletItem(this, i, i + 1));
+      if (Shop.has(2, i)) this.amulets.push(new AmuletItem(this, i, i + 1));
     }
   }
 
@@ -869,6 +875,7 @@ class BarScene {
   update(dt) {
     if (this.paused) return;
     this.timers.update(dt);
+    if (this.shop) { this.updateShop(dt); return; }      // окно магазина улучшений
     if (this.updateNote(dt)) return;               // записка открыта — игра стоит
     this.moves.update(dt);
     if (this.state === 'result') return;
@@ -1202,6 +1209,7 @@ class BarScene {
         if (d) {
           if (d.type === 1) {
             if (sel.step === 0) {
+              if (d.kind === 3 && d.step === 1 && sel.orders) this.samovarFill(d, sel);     // самовар готовит заказ сам (shop.js)
               if (d.step === 3 || d.step === 5) this.tryServe(sel, d);
               else this.sfx('UICantUse');
             } else this.sfx('UICantUse');
@@ -1387,6 +1395,7 @@ class BarScene {
       sum += COST_AMULET[bottle.client.orders.amuletID - 1];
     }
     if (bottle.client) sum += bottle.client.tip * sum;
+    if (bottle.kind === 1) sum += sum * SHOP_MONEY_BONUS;      // денежный стакан (shop.js)
     return Math.floor(sum);   // во Flash итог — uint: дробная часть отбрасывается
   }
 
@@ -1536,9 +1545,11 @@ Object.assign(BarScene.prototype, {
 
     // HUD
     this.drawTimeIndicator(ctx);
+    this.drawWallet(ctx);
     this.drawMenuButton(ctx);
 
     // оверлеи
+    if (this.shop) this.drawShop(ctx);
     this.drawNoteOverlay(ctx);
     if (this.paused) this.drawPause(ctx);
     if (this.state === 'result') this.drawResult(ctx);

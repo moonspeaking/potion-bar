@@ -13,7 +13,7 @@ Object.assign(BarScene.prototype, {
   // конец вводной части: обучение (если ещё не пройдено) или сразу уровень
   beginPlay() {
     if (this.needTutorial()) this.startTutorial();
-    else this.preStory(() => this.startLevel());
+    else this.preStory(() => this.shopThen(() => this.startLevel()));   // сюжет → магазин улучшений (уровни 3/5/7 эпизода) → старт
   },
 
   // реальный старт таймера уровня (из startLevel без смены состояния)

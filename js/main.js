@@ -359,6 +359,9 @@ const App = {
   // вызывается сценой после итога уровня
   // конец уровня: результат пишется в сохранение, затем возврат на карту (как в оригинале)
   onLevelEnd(scenarioIdx, won, expert, money) {
+    // накопленный кошелёк для магазина: заработок первого прохождения уровня бара
+    const firstWin = won && !((Save.results()[scenarioIdx] || {}).won);
+    if (firstWin && typeof money === 'number' && SCENARIO[scenarioIdx].type === 'base') Shop.addMoney(money);
     Save.recordResult(scenarioIdx, won, expert, money);
     if (!won) {
       if (this.progress > 0) this.showMap(); else this.showTitle();

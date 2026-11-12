@@ -14,7 +14,7 @@ const Save = {
   K_PROFILES: 'pb_profiles',     // { list: [{id, name}], cur: id, next: n }
 
   // ключи, которые хранятся отдельно для каждого профиля
-  PROFILE_KEYS: ['pb_scenario', 'pb_intro_seen', 'pb_mg1_pool', 'pb_results', 'pb_note_read', 'pb_tutorial_done'],
+  PROFILE_KEYS: ['pb_scenario', 'pb_intro_seen', 'pb_mg1_pool', 'pb_results', 'pb_note_read', 'pb_tutorial_done', 'pb_shop'],
   _k(key) {
     const c = this.profiles && this.profiles.cur;
     return (c && this.PROFILE_KEYS.includes(key)) ? 'pb_u' + c + '_' + key : key;
