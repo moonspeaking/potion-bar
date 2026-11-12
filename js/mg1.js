@@ -303,7 +303,7 @@ class MG1Scene {
     } else {
       // случайные цели из пула
       for (let i = 0; i < MG1.lvlSearch[level - 1]; i++) {
-        targets.push(this.pool.splice(Math.floor(Math.random() * this.pool.length), 1)[0]);
+        targets.push(this.pool.splice(rndIdx(this.pool.length), 1)[0]);   // Flash: Math.round((n-1)*random)
       }
       this.exceptionWin = targets.slice();
       if (level === 5) for (const e of MG1.elixir) targets.push(e);
@@ -332,14 +332,15 @@ class MG1Scene {
     }
 
     // наполнители (количество — из таблиц оригинала)
+    // на 6-м уровне (последний день) группы целей не исключаются — как в оригинале
     const excl = (i) => MG1.lastday.includes(i) || MG1.elixir.includes(i) || targets.includes(i) ||
-      (this.levelObjects.length > 0 && this.levelObjects.some((t) => MG1.groups[t] === MG1.groups[i]));
+      (level !== 6 && this.levelObjects.length > 0 && this.levelObjects.some((t) => MG1.groups[t] === MG1.groups[i]));
     const pool5 = [];
     for (let i = 0; i < 103; i++) if (!excl(i)) pool5.push(i);
     const needFill = MG1.lvlIng[level - 1] - MG1.lvlSearch[level - 1];
     const fillers = [];
     for (let i = 0; i < needFill && pool5.length; i++) {
-      fillers.push(pool5.splice(Math.floor(Math.random() * pool5.length), 1)[0]);
+      fillers.push(pool5.splice(rndIdx(pool5.length), 1)[0]);
     }
 
     const placed = targets.concat(fillers).sort((a, b) => a - b);
