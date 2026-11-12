@@ -5,6 +5,9 @@
 // Координаты — Flash-единицы (640×480) через F() = ×1.6.
 'use strict';
 
+// как во Flash: Math.round((n-1)*random) — крайние элементы выпадают вдвое реже
+const rndIdx = (n) => Math.round((n - 1) * Math.random());
+
 function fpt(p) { return { x: p[0] * S, y: p[1] * S }; }
 
 // Кадровый спрайт (нарезка по вертикали), якорь — левый верх
@@ -944,7 +947,7 @@ class BarScene {
       }
     }
     if (!pool.length) pool = this.ingBottles.map(b => b.ingredientID);
-    const ingredientID = pool[Math.floor(Math.random() * pool.length)];
+    const ingredientID = pool[rndIdx(pool.length)];
 
     const li = this.levelId - 1;
     const visibleSpices = this.spices.filter(s => s.visible).map(s => s.spiciesID);
@@ -956,18 +959,18 @@ class BarScene {
     const list = visibleSpices.slice();
     const spiciesID = [];
     for (let i = 0; i < spicesCount && list.length; i++) {
-      const k = Math.floor(Math.random() * list.length);
+      const k = rndIdx(list.length);
       spiciesID.push(list[k]);
       list.splice(k, 1);
     }
 
     let decorID = -1;
     if (Math.random() > 0.5 && this.decors.length) {
-      decorID = this.decors[Math.floor(Math.random() * this.decors.length)].decorID;
+      decorID = this.decors[rndIdx(this.decors.length)].decorID;
     }
     let amuletID = 0;
     if (Math.random() > 0.5 && this.amulets.length) {
-      amuletID = this.amulets[Math.floor(Math.random() * this.amulets.length)].amuletID;
+      amuletID = this.amulets[rndIdx(this.amulets.length)].amuletID;
     }
     return { ingredientID, spiciesID, decorID, amuletID };
   }
@@ -998,7 +1001,7 @@ class BarScene {
     this.spawnGate = false;
     this.timers.after(TIMING.spawnBlock + Math.random() * TIMING.spawnBlockJitter, () => { this.spawnGate = true; });
     this.timers.after(0.14, () => {
-      const posID = freePositions[Math.floor(Math.random() * freePositions.length)];
+      const posID = freePositions[rndIdx(freePositions.length)];
       const clientID = pickGuest(freeIDs.length ? freeIDs : types, this.loc);
       this.clients[freeVar].init(posID, clientID, this.createOrder());
       this.sortClientInCommon(this.clients[freeVar]);
@@ -1381,7 +1384,7 @@ class BarScene {
       sum += COST_AMULET[bottle.client.orders.amuletID - 1];
     }
     if (bottle.client) sum += bottle.client.tip * sum;
-    return Math.round(sum);
+    return Math.floor(sum);   // во Flash итог — uint: дробная часть отбрасывается
   }
 
   clientWantsAmulet(client, bottle) {
