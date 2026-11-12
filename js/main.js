@@ -44,6 +44,31 @@ const FS = {
   document.addEventListener('webkitfullscreenchange', upd);
 })();
 
+// по умолчанию — на весь экран: браузер разрешает это только по жесту, поэтому при первом касании/клике.
+// Если игрок сам вышел из полного экрана — больше не навязываем (запоминается).
+(function autoFullscreen() {
+  if (!FS.supported) return;
+  const KEY = 'bar_fs_off';
+  const ls = (f) => { try { return f(localStorage); } catch (e) { return null; } };
+  if (ls((l) => l.getItem(KEY)) === '1') return;
+  if (matchMedia('(display-mode: fullscreen)').matches || matchMedia('(display-mode: standalone)').matches) return;
+  let armed = false;
+  const onGesture = (e) => {
+    if (e.target && e.target.id === 'fs') return;       // кнопка сама переключает
+    removeEventListener('pointerup', onGesture, true);
+    if (!FS.active()) { FS.toggle(); setTimeout(() => { armed = true; }, 1000); }
+    else armed = true;
+  };
+  addEventListener('pointerup', onGesture, true);
+  const onChange = () => { if (armed && !FS.active()) ls((l) => l.setItem(KEY, '1')); };
+  document.addEventListener('fullscreenchange', onChange);
+  document.addEventListener('webkitfullscreenchange', onChange);
+  // включение вручную (кнопка/опции) снимает запрет
+  const onEnter = () => { if (FS.active()) ls((l) => l.removeItem(KEY)); };
+  document.addEventListener('fullscreenchange', onEnter);
+  document.addEventListener('webkitfullscreenchange', onEnter);
+})();
+
 // скрытая вкладка: тишина и пауза бара; возврат — продолжение
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
