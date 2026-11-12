@@ -1028,7 +1028,8 @@ class BarScene {
       if (o.hitActive === false) continue;
       if (this.tutorialActive && !this.tutAllows(o)) continue;     // обучение: доступны только мигающие
       if (o.type === 3 && (o.closed || o.bottle)) continue;
-      if (o.type === 0 && !(this.dragObj && this.dragObj.type === 1)) continue;
+      if (o.type === 0 && !(this.dragObj && this.dragObj.type === 1 && this.dragObj.step >= 2)) continue;   // sink_hittest_on только с наполненным стаканом
+      if (o.type === 6 && this.dragObj && this.dragObj.type === 1 && this.dragObj.step >= 2) continue;       // amulets_hittest_off
       const r = o.contentRect();
       if (!r) continue;
       if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) {
@@ -1055,7 +1056,8 @@ class BarScene {
       if (o === drag || o.hitActive === false) continue;
       if (this.tutorialActive && !this.tutAllows(o)) continue;
       if (o.type === 3 && (o.closed || o.bottle)) continue;
-      if (o.type === 0 && drag.type !== 1) continue;
+      if (o.type === 0 && !(drag.type === 1 && drag.step >= 2)) continue;
+      if (o.type === 6 && drag.type === 1 && drag.step >= 2) continue;
       const r = o.contentRect();
       if (!r) continue;
       if (Math.max(dr.x, r.x) < Math.min(dr.x + dr.w, r.x + r.w) &&
@@ -1284,6 +1286,7 @@ class BarScene {
       // bottleBoil(): перезапуск цикла кипячения после добавления специй
       // (start_point = burner_indicator_progress, т.к. burn_started сброшен)
       if (!bottle.burnStarted) bottle.startPoint = bottle.progress;
+      bottle.tickAcc = 0;   // bottlePrepareBoil + bottleBoil: интервал кипячения запускается заново
     }
     return true;
   }
